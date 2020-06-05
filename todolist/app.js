@@ -4,36 +4,30 @@ const search = document.querySelector('.search input');
 const inputs = document.querySelectorAll('input[type="checkbox"]');
 const checkElement = document.getElementById("check");
 
-
 (function () {
+  console.log('即時関数');
   // 初期化処理
   // ローカルストレージに格納されている値を取得し、リストを生成する
   for (var key in localStorage) {
-
     // 勝手にロードするとclientIdが保存されてしまっていたので出力させない
-    if (key.includes("ClientId")) {
-      return;
-    }
-    var html = localStorage.getItem(key);
+    if (!(key.includes("ClientId") || key.includes("inputs"))) {
+      var Data = JSON.parse(localStorage.getItem(key));
+      if (Data) {
+        var html = Data.html;
+        var status = Data.status;
+        if (html) {
+          list.innerHTML += html;
+        }
+        if (status) {
 
-    if (html) {
-      list.innerHTML += localStorage.getItem(key);
+        }
+      }
     }
   }
 })();
 
-window.addEventListener('load', (e) => {
-  console.log('ページが完全に読み込まれました');
-  checkboxLoad();
-  console.log(document.querySelectorAll('input[type="checkbox"]'));
-  console.log(checkElement);
-
-});
-
-
 
 const createTodoList = task => {
-
   // HTML テンプレートを生成
   const html = `
     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -42,49 +36,65 @@ const createTodoList = task => {
     </li>
     `;
 
-  list.innerHTML += html;
-  saveTaskTolocalStorage(task, html);
+  var Data = {
+    html: html,
+    status: false
+  };
+
+  list.innerHTML += Data.html;
+  saveTaskTolocalStorage(task, Data);
 }
 
 // taskの保存
-const saveTaskTolocalStorage = (task, html) => {
+const saveTaskTolocalStorage = (task, Data) => {
   // nullはlocalStorageに保存しない
-  if (html) {
+  if (Data.html) {
     // localStorageは0から始まる
-    localStorage.setItem(task, html);
+    localStorage.setItem(task, JSON.stringify(Data));
     return;
   }
   return;
 }
 
-// checkboxの保存
-const checkboxTolocalStorage = () => {
-  var inputs = document.querySelectorAll('input[type="checkbox"]');
-  var arrData = [];
-  inputs.forEach((input, index) => {
-    arrData.push({
-      id: input.id + index,
-      checked: input.checked
-    });
-  });
-  localStorage.setItem('inputs', JSON.stringify(arrData));
 
-  console.log(JSON.stringify(arrData));
+// ====オリジナル追加======
+// checkboxがクリックされたら横線をいれる
+list.addEventListener('click', e => {
+
+  if (e.target.nodeName === 'INPUT') {
+    var key = e.target.parentElement.textContent.trim();
+    var Data = JSON.parse(localStorage.getItem(key));
+    // checkboxの次の要素がspanタグ
+    var spanClass = e.target.nextSibling.classList;
+    spanClass.toggle('done');
+    checkboxToLocalStorage(key, spanClass, Data);
+  }
+});
+
+// checkboxの保存
+const checkboxToLocalStorage = (key, spanClass, Data) => {
+
+  if (spanClass.value === "done") {
+    Data.status = true;
+  } else {
+    Data.status = false;
+  }
+
+  localStorage.setItem(key, JSON.stringify(Data));
 }
+
 
 // checkboxの呼び出し
 const checkboxLoad = () => {
-  console.log('checkboxcLoad!!');
-  let inputs = JSON.parse(localStorage.getItem('inputs'));
-  if (inputs) {
-    console.log(JSON.parse(localStorage.getItem('inputs')));
-    inputs.forEach((input) => {
-      console.log(input);
-      document.getElementById(input.id).checked = input.checked;
-    });
-  }
 
 
+
+  // let inputs = JSON.parse(localStorage.getItem('inputs'));
+  // if (inputs) {
+  //   inputs.forEach((input) => {
+  //     document.getElementById(input.id).checked = input.checked;
+  //   });
+  // }
 }
 
 // 削除の保存機能
@@ -92,9 +102,6 @@ const deleteTaskFromlocalStorage = task => {
   localStorage.removeItem(task);
   return;
 }
-
-
-
 
 // task追加機能
 addTask.addEventListener('submit', e => {
@@ -110,17 +117,6 @@ addTask.addEventListener('submit', e => {
   }
 });
 
-// ====オリジナル追加======
-// checkboxがクリックされたら横線をいれる
-list.addEventListener('click', e => {
-  if (e.target.nodeName === 'INPUT') {
-    // checkboxの次の要素がspanタグ
-    e.target.nextSibling.classList.toggle('done');
-    checkboxTolocalStorage();
-  }
-});
-
-
 //　削除機能
 list.addEventListener('click', e => {
   if (e.target.classList.contains('delete')) {
@@ -128,15 +124,11 @@ list.addEventListener('click', e => {
 
     const task = e.target.parentElement.textContent.trim();
     deleteTaskFromlocalStorage(task);
-    checkboxTolocalStorage();
+    checkboxToLocalStorage();
   }
 });
 
-
-
 const filterTasks = (term) => {
-
-
   Array.from(list.children)
     // フィルタ条件
     .filter((todo) => !todo.textContent.toLowerCase().includes(term))
